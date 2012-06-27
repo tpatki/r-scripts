@@ -1,0 +1,57 @@
+#!/usr/bin/env Rscript
+
+#Tapasya Patki. R script for plotting rzmerl data
+
+#Read all files ending with .out 
+files_vec <- list.files(pattern="ft-table.out")
+
+#extract the names of the benchmarks
+names <- sub("-table.out", "", files_vec)
+
+#Now, determine the unbounded data. This is the one which will have a power limit set to 95W in the current data set. This is same for all benchmarks, so I'm keeping this out of the main loop and using ft to calculate it. 
+
+ft <- read.table("ft-table.out", header=T)
+socketBound = max(unique(ft$pkg.clamp.0))
+
+#Gather the task count, cores/node count  
+
+minTasks = min(unique(ft$cores))
+maxTasks = max(unique(ft$cores))
+
+taskVector = sort(unique(ft$cores))
+
+
+minCoresPerNode = min(unique(ft$cores/ft$nodes))
+maxCoresPerNode = max(unique(ft$cores/ft$nodes))
+
+coreVector = sort(unique(ft$cores/ft$nodes))
+
+#Create one dataframe for each benchmark, with name names[i]
+
+#For testing, restrict this to a single benchmark first
+
+flag = 0
+
+pdf("plot1.pdf")
+
+for (i in names) { 
+	filename<-paste(i,"-table.out", sep="")
+	assign(i, read.table(filename, header=T))
+
+	#First select data that matches the power limit of 95
+	#get() converts the string "ft" to dataframe ft.
+
+	unboundData = which(get(i)$pkg.clamp.0 == socketBound)
+
+	for (j in taskVector) {
+		selection = intersect(unboundData, which(taskVector[j] == get(i)$cores))
+		if (flag == 0){
+			flag = 1		
+			plot(get(i)$avg.time[selection], get(i)$cores[selection], main='Effect of varying cores per node, no power bound enforced', xlab='Total time (secs)', ylab='Total tasks', ylim=range(taskVector))
+		} 
+				
+	}
+
+	
+}
+dev.off()
